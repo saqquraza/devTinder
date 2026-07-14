@@ -1,0 +1,32 @@
+{
+  "name": "devtinder",
+  "version": "1.0.0",
+  "description": "Going to developed the devTinder",
+  "keywords": [
+    "node",
+    "js",
+    "js",
+    "express",
+    "aws",
+    "socket"
+  ],
+  "homepage": "https://github.com/saqquraza/devTinder#readme",
+  "bugs": {
+    "url": "https://github.com/saqquraza/devTinder/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saqquraza/devTinder.git"
+  },
+  "license": "ISC",
+  "author": "saqlain",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/app",
+    "dev":"nodemon src/app"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

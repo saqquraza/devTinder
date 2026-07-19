@@ -4,8 +4,134 @@ const { main } = require("./config/mongoDbRawConnection");
 const { dbConnect } = require("./config/mongoDbMongooseConnection");
 const User = require("./models/user");
 const Test = require("./models/test");
+const Joi = require("joi");
+const bcrypt = require("bcrypt")
+const { validateUserData } = require("./utils/validateUserData");
 
 app.use(express.json()); // To convert the json data into js obj.
+
+app.post("login", async (req, res) => {
+
+})
+
+app.post("/signup", async (req, res) => {
+    try {
+        let userData = req.body;
+
+        let { error, value } = validateUserData(userData);
+
+        console.log("value", value);
+        if (error) {
+            return res.status(400).send(error.details)
+        }
+        /** 
+         *  Bcrypt is a npm packake use to create hash password using hash algorith .
+         * salt round basically define how many time want to loops 
+         * maximum the round stronge the password but slow the application
+         * use .hash() for generating hash password
+        */
+        const plainPassword = value.password;
+        const saltRounds = 10;
+        const hashPassword = await bcrypt.hash(plainPassword, saltRounds);
+
+        await User.insertOne({ ...userData, password: hashPassword });
+
+        res.send("User added successfully !");
+
+    } catch (error) {
+        console.log(error.message);
+        res.status(400).send("Error message :" + error.message);
+    }
+})
+
+/**
+ * Login API
+ * POST /login
+ */
+app.post("/login", async (req, res) => {
+    try {
+        const reqData = req.body;
+
+        /**
+         * Validate the request body using Joi.
+         * abortEarly: false returns all validation errors instead of only the first.
+         */
+        const loginSchema = Joi.object({
+            emailId: Joi.string().email().required(),
+            password: Joi.string().min(5).required(),
+        });
+
+        const { error, value } = loginSchema.validate(reqData, {
+            abortEarly: false,
+        });
+
+        // Request validation failed
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: "Validation Failed",
+                errors: error.details,
+            });
+        }
+
+        const { emailId, password } = value;
+
+        /**
+         * Find user by email.
+         * Returns null if the email doesn't exist.
+         */
+        const userData = await User.findOne({ emailId });
+
+        /**
+         * Don't reveal whether the email exists.
+         * This prevents attackers from identifying registered emails.
+         */
+        if (!userData) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid email or password",
+            });
+        }
+
+        /**
+         * Compare the plain password entered by the user
+         * with the hashed password stored in the database.
+         *
+         * bcrypt.compare() hashes the entered password using
+         * the salt stored inside the hash and checks whether
+         * both hashes match.
+         */
+        const isValidUser = await bcrypt.compare(password, userData.password);
+
+        if (!isValidUser) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid email or password",
+            });
+        }
+
+        /**
+         * Authentication successful.
+         */
+        return res.status(200).json({
+            success: true,
+            message: "Login successful",
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        /**
+         * Unexpected server error.
+         */
+        return res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+        });
+    }
+});
+
+
 
 app.get("/test", async (req, res) => {
     try {

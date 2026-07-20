@@ -10,10 +10,6 @@ const { validateUserData } = require("./utils/validateUserData");
 
 app.use(express.json()); // To convert the json data into js obj.
 
-app.post("login", async (req, res) => {
-
-})
-
 app.post("/signup", async (req, res) => {
     try {
         let userData = req.body;
@@ -101,9 +97,9 @@ app.post("/login", async (req, res) => {
          * the salt stored inside the hash and checks whether
          * both hashes match.
          */
-        const isValidUser = await bcrypt.compare(password, userData.password);
+        const isValidPassword = await bcrypt.compare(password, userData.password);
 
-        if (!isValidUser) {
+        if (!isValidPassword) {
             return res.status(401).json({
                 success: false,
                 message: "Invalid email or password",

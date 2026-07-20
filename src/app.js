@@ -5,14 +5,14 @@ const { dbConnect } = require("./config/mongoDbMongooseConnection");
 const User = require("./models/user");
 const Test = require("./models/test");
 const Joi = require("joi");
-const bcrypt = require("bcrypt")
+const bcrypt = require("bcrypt");
+const cookieParser = require('cookie-parser');
+const jwt = require("jsonwebtoken");
 const { validateUserData } = require("./utils/validateUserData");
+const { userAuthorization } = require("./middleware/authorization");
 
 app.use(express.json()); // To convert the json data into js obj.
-
-app.post("login", async (req, res) => {
-
-})
+app.use(cookieParser()); // To access the cookies
 
 app.post("/signup", async (req, res) => {
     try {
@@ -111,6 +111,16 @@ app.post("/login", async (req, res) => {
         }
 
         /**
+         * After above jwt token will be generate and sent to cookie
+         * to make the access token dynamic need to add jsonwebtoken
+         * to generate the token.
+         */
+
+        const accessToken = await jwt.sign({ _id: userData._id }, "DEV@1234");
+
+        res.cookie("accessToken", accessToken);
+
+        /**
          * Authentication successful.
          */
         return res.status(200).json({
@@ -127,6 +137,44 @@ app.post("/login", async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Internal Server Error",
+        });
+    }
+});
+
+app.get("/user", userAuthorization, async (req, res) => {
+    try {
+        // User ID extracted from the JWT by the authorization middleware
+        const { _id } = req;
+
+        // Fetch the authenticated user's details
+        const userData = await User.findById(_id);
+
+        /**
+         * Return 404 if the user does not exist.
+         * This can happen if the account was deleted after the token was issued.
+         */
+        if (!userData) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        // Successfully fetched user details
+        return res.status(200).json({
+            success: true,
+            message: "User details fetched successfully",
+            data: userData,
+        });
+    } catch (error) {
+        console.error("Error fetching user details:", error);
+
+        /**
+         * Unexpected server error.
+         */
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
         });
     }
 });

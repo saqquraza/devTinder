@@ -101,7 +101,8 @@ app.post("/login", async (req, res) => {
          * the salt stored inside the hash and checks whether
          * both hashes match.
          */
-        const isValidUser = await bcrypt.compare(password, userData.password);
+         //const isValidUser = await bcrypt.compare(password, userData.password); 
+        const isValidUser = await userData.validPassword(password);
 
         if (!isValidUser) {
             return res.status(401).json({
@@ -116,7 +117,9 @@ app.post("/login", async (req, res) => {
          * to generate the token.
          */
 
-        const accessToken = await jwt.sign({ _id: userData._id }, "DEV@1234");
+        //const accessToken = await jwt.sign({ _id: userData._id }, "DEV@1234");
+        
+        const accessToken = await userData.getJwtToken(); // it will return the jwt token for the user and we can send it to the cookie.
 
         res.cookie("accessToken", accessToken);
 

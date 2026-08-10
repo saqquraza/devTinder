@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 
 const userSchema = new mongoose.Schema({
     firstName: {
@@ -62,10 +64,21 @@ const userSchema = new mongoose.Schema({
     skills: {
         type: Array
     }
-}, { timestamps: true ,  strict: true})   // Mongoose provide the feature where timestamps it self add two field one createdAt and updatedAt.
+}, { timestamps: true, strict: true })   // Mongoose provide the feature where timestamps it self add two field one createdAt and updatedAt.
 
 // const User = mongoose.model("User", userSchema);
 // module.exports = {
 //     User
 // }
+userSchema.methods.getJwtToken = async function () {
+    const user = this; // when ever it call it will return the user object
+    const _id = user._id;
+    return await jwt.sign({ _id }, "DEV@1234", { expiresIn: "1h" });
+}
+
+userSchema.methods.validPassword = async function(passwordInputByUser){
+    const user = this ; // when ever it call it will return the user object
+    const passwordHash = user.password; // password hash stored in the database
+    return await bcrypt.compare(passwordInputByUser, passwordHash);
+}
 module.exports = mongoose.model("User", userSchema);

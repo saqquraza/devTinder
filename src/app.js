@@ -5,128 +5,52 @@ const { dbConnect } = require("./config/mongoDbMongooseConnection");
 const User = require("./models/user");
 const Test = require("./models/test");
 const Joi = require("joi");
-const bcrypt = require("bcrypt")
+const bcrypt = require("bcrypt");
+const cookieParser = require('cookie-parser');
+const jwt = require("jsonwebtoken");
 const { validateUserData } = require("./utils/validateUserData");
+const { userAuthorization } = require("./middleware/authorization");
+const auth = require("../src/controller/auth");
 
 app.use(express.json()); // To convert the json data into js obj.
+app.use(cookieParser()); // To access the cookies
 
-app.post("login", async (req, res) => {
+app.use("/auth",auth);
 
-})
-
-app.post("/signup", async (req, res) => {
+app.get("/user", userAuthorization, async (req, res) => {
     try {
-        let userData = req.body;
+        // User ID extracted from the JWT by the authorization middleware
+        const { _id } = req;
 
-        let { error, value } = validateUserData(userData);
-
-        console.log("value", value);
-        if (error) {
-            return res.status(400).send(error.details)
-        }
-        /** 
-         *  Bcrypt is a npm packake use to create hash password using hash algorith .
-         * salt round basically define how many time want to loops 
-         * maximum the round stronge the password but slow the application
-         * use .hash() for generating hash password
-        */
-        const plainPassword = value.password;
-        const saltRounds = 10;
-        const hashPassword = await bcrypt.hash(plainPassword, saltRounds);
-
-        await User.insertOne({ ...userData, password: hashPassword });
-
-        res.send("User added successfully !");
-
-    } catch (error) {
-        console.log(error.message);
-        res.status(400).send("Error message :" + error.message);
-    }
-})
-
-/**
- * Login API
- * POST /login
- */
-app.post("/login", async (req, res) => {
-    try {
-        const reqData = req.body;
+        // Fetch the authenticated user's details
+        const userData = await User.findById(_id);
 
         /**
-         * Validate the request body using Joi.
-         * abortEarly: false returns all validation errors instead of only the first.
-         */
-        const loginSchema = Joi.object({
-            emailId: Joi.string().email().required(),
-            password: Joi.string().min(5).required(),
-        });
-
-        const { error, value } = loginSchema.validate(reqData, {
-            abortEarly: false,
-        });
-
-        // Request validation failed
-        if (error) {
-            return res.status(400).json({
-                success: false,
-                message: "Validation Failed",
-                errors: error.details,
-            });
-        }
-
-        const { emailId, password } = value;
-
-        /**
-         * Find user by email.
-         * Returns null if the email doesn't exist.
-         */
-        const userData = await User.findOne({ emailId });
-
-        /**
-         * Don't reveal whether the email exists.
-         * This prevents attackers from identifying registered emails.
+         * Return 404 if the user does not exist.
+         * This can happen if the account was deleted after the token was issued.
          */
         if (!userData) {
-            return res.status(401).json({
+            return res.status(404).json({
                 success: false,
-                message: "Invalid email or password",
+                message: "User not found",
             });
         }
 
-        /**
-         * Compare the plain password entered by the user
-         * with the hashed password stored in the database.
-         *
-         * bcrypt.compare() hashes the entered password using
-         * the salt stored inside the hash and checks whether
-         * both hashes match.
-         */
-        const isValidUser = await bcrypt.compare(password, userData.password);
-
-        if (!isValidUser) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid email or password",
-            });
-        }
-
-        /**
-         * Authentication successful.
-         */
+        // Successfully fetched user details
         return res.status(200).json({
             success: true,
-            message: "Login successful",
+            message: "User details fetched successfully",
+            data: userData,
         });
-
     } catch (error) {
-        console.error(error);
+        console.error("Error fetching user details:", error);
 
         /**
          * Unexpected server error.
          */
         return res.status(500).json({
             success: false,
-            message: "Internal Server Error",
+            message: "Internal server error",
         });
     }
 });
